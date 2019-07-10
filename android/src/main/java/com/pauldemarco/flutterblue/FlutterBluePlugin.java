@@ -159,8 +159,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         case "startScan": {
             if (ContextCompat.checkSelfPermission(activity,
                     Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(activity,
-                        new String[] { Manifest.permission.ACCESS_COARSE_LOCATION },
+                ActivityCompat.requestPermissions(activity, new String[] { Manifest.permission.ACCESS_COARSE_LOCATION },
                         REQUEST_COARSE_LOCATION_PERMISSIONS);
                 pendingCall = call;
                 pendingResult = result;
@@ -205,8 +204,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
             }
 
             // New request, connect and add gattServer to Map
-            BluetoothGatt gattServer = device.connectGatt(activity, options.getAndroidAutoConnect(),
-                    mGattCallback);
+            BluetoothGatt gattServer = device.connectGatt(activity, options.getAndroidAutoConnect(), mGattCallback);
             mGattServers.put(deviceId, gattServer);
             result.success(null);
             break;
@@ -558,20 +556,20 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                     final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
                     switch (state) {
                     case BluetoothAdapter.STATE_OFF:
-                        sink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.OFF)
-                                .build().toByteArray());
+                        invokeSinkUIThread(sink, Protos.BluetoothState.newBuilder()
+                                .setState(Protos.BluetoothState.State.OFF).build().toByteArray());
                         break;
                     case BluetoothAdapter.STATE_TURNING_OFF:
-                        sink.success(Protos.BluetoothState.newBuilder()
+                        invokeSinkUIThread(sink, Protos.BluetoothState.newBuilder()
                                 .setState(Protos.BluetoothState.State.TURNING_OFF).build().toByteArray());
                         break;
                     case BluetoothAdapter.STATE_ON:
-                        sink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.ON).build()
-                                .toByteArray());
+                        invokeSinkUIThread(sink, Protos.BluetoothState.newBuilder()
+                                .setState(Protos.BluetoothState.State.ON).build().toByteArray());
                         break;
                     case BluetoothAdapter.STATE_TURNING_ON:
-                        sink.success(Protos.BluetoothState.newBuilder().setState(Protos.BluetoothState.State.TURNING_ON)
-                                .build().toByteArray());
+                        invokeSinkUIThread(sink, Protos.BluetoothState.newBuilder()
+                                .setState(Protos.BluetoothState.State.TURNING_ON).build().toByteArray());
                         break;
                     }
                 }
@@ -628,7 +626,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                     super.onScanResult(callbackType, result);
                     if (scanResultsSink != null) {
                         Protos.ScanResult scanResult = ProtoMaker.from(result.getDevice(), result);
-                        scanResultsSink.success(scanResult.toByteArray());
+                        invokeSinkUIThread(scanResultsSink, scanResult.toByteArray());
                     }
                 }
 
@@ -680,7 +678,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 public void onLeScan(final BluetoothDevice bluetoothDevice, int rssi, byte[] scanRecord) {
                     if (scanResultsSink != null) {
                         Protos.ScanResult scanResult = ProtoMaker.from(bluetoothDevice, scanRecord, rssi);
-                        scanResultsSink.success(scanResult.toByteArray());
+                        invokeSinkUIThread(scanResultsSink, scanResult.toByteArray());
                     }
                 }
             };
@@ -776,7 +774,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 for (BluetoothGattService s : gatt.getServices()) {
                     p.addServices(ProtoMaker.from(gatt.getDevice(), s, gatt));
                 }
-                servicesDiscoveredSink.success(p.build().toByteArray());
+                invokeSinkUIThread(servicesDiscoveredSink, p.build().toByteArray());
             }
         }
 
@@ -788,7 +786,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 Protos.ReadCharacteristicResponse.Builder p = Protos.ReadCharacteristicResponse.newBuilder();
                 p.setRemoteId(gatt.getDevice().getAddress());
                 p.setCharacteristic(ProtoMaker.from(characteristic, gatt));
-                characteristicReadSink.success(p.build().toByteArray());
+                invokeSinkUIThread(characteristicReadSink, p.build().toByteArray());
             }
         }
 
@@ -842,7 +840,7 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
                 Protos.ReadDescriptorResponse.Builder p = Protos.ReadDescriptorResponse.newBuilder();
                 p.setRequest(q);
                 p.setValue(ByteString.copyFrom(descriptor.getValue()));
-                descriptorReadSink.success(p.build().toByteArray());
+                invokeSinkUIThread(descriptorReadSink, p.build().toByteArray());
             }
 
         }
@@ -895,15 +893,26 @@ public class FlutterBluePlugin implements MethodCallHandler, RequestPermissionsR
         }
     }
 
-    private void invokeMethodUIThread(final String name, final byte[] byteArray)
-    {
-        activity.runOnUiThread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        channel.invokeMethod(name, byteArray);
-                    }
-                });
+    private void invokeMethodUIThread(final String name, final Object arguments) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                channel.invokeMethod(name, arguments);
+            }
+        });
+    }
+
+    private void invokeSinkUIThread(final EventSink sink, final Object arguments) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                sink.success(arguments);
+            }
+        });
+    }
+
+    private void runOnUiThread(Runnable runnable) {
+        activity.runOnUiThread(runnable);
     }
 
 }
