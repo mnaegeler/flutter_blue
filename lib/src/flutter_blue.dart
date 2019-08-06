@@ -145,6 +145,8 @@ class FlutterBlue {
     yield* controller.stream;
   }
 
+  Future cancelConnection(BluetoothDevice device) => _cancelConnection(device);
+
   /// Cancels connection to the Bluetooth Device
   Future _cancelConnection(BluetoothDevice device) =>
       _channel.invokeMethod('disconnect', device.id.toString());
