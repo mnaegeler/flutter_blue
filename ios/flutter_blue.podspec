@@ -18,8 +18,8 @@ A new flutter plugin project.
   s.dependency '!ProtoCompiler'
   s.framework = 'CoreBluetooth'
 
-  #protoc = "#{PODS_ROOT}/!ProtoCompiler/protoc"
-  protoc = ENV['PWD'] + '/ios/Pods/!ProtoCompiler/protoc'
+  protoc = "#{PODS_ROOT}/!ProtoCompiler/protoc"
+  #protoc = ENV['PWD'] + '/ios/Pods/!ProtoCompiler/protoc'
   objc_out = 'gen'
   proto_in = '../protos'
   s.prepare_command = <<-CMD
